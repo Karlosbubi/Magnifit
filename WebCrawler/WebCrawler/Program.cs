@@ -1,20 +1,43 @@
-﻿namespace WebCrawler;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Extensions.Logging;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
-class Program
+namespace WebCrawler;
+
+public class Program
 {
+    private static string TestUrl = "https://www.dhbw-heidenheim.de";
+
     static async Task Main(string[] args)
     {
-        Crawler crawler = new Crawler();
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Console()
+            .CreateLogger();
 
-        var testUrl = "https://www.dhbw-heidenheim.de";
+        var builder = Host.CreateApplicationBuilder(args);
+        builder.Services
+            .AddSerilog()
+            .AddSingleton<DbInfo>(_ => new DbInfo("Data Source=../../../crawler.db"))
+            .AddSingleton<IDatabase, SqliteConector>()
+            .AddHostedService<Crawler>();
         
-        var res = await crawler.CrawlOnce(testUrl);
+        var host = builder.Build();
         
-        Console.WriteLine(res);
+        await host.RunAsync();
         
-        foreach (var item in res.ChildLinks)
-        {
-            Console.WriteLine(item);
-        }
+        Log.CloseAndFlush();
+        
+    }
+}
+
+public record DbInfo(string ConnectionString)
+{
+    public override string ToString()
+    {
+        return $"{{ ConnectionString = {ConnectionString} }}";
     }
 }
