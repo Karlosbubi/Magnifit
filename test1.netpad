@@ -1,0 +1,9 @@
+778e4527-6c2a-42ee-a11f-ad5a5e17d55a
+{"config":{"kind":"Program","targetFrameworkVersion":"DotNet9","optimizationLevel":"Debug","useAspNet":false,"namespaces":["System","System.Collections","System.Collections.Generic","System.Data","System.Diagnostics","System.IO","System.Linq","System.Linq.Expressions","System.Net.Http","System.Reflection","System.Text","System.Text.RegularExpressions","System.Threading","System.Threading.Tasks","System.Xml","System.Xml.Linq","System.Xml.XPath","System.Net"],"references":[]},"dataConnection":null}
+#Code
+var url = "http://www.dhbw-heidenheim.de";
+
+var client = new HttpClient();
+var response = client.GetResponse();
+
+Console.WriteLine(response.ContentLength);
