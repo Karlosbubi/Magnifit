@@ -29,7 +29,7 @@ public class PostgresConnector : IDatabase
                        create table if not exists urls(
                             id serial primary key,
                             url text not null unique,
-                            last_check text,
+                            last_check timestamp,
                             raw_content text
                            );
                        """;
@@ -44,7 +44,7 @@ public class PostgresConnector : IDatabase
         await _dbConnection.OpenAsync();
 
         var date = await _dbConnection.QueryAsync<DateTime?>(
-            "SELECT last_check from urls where url is @url;",
+            "SELECT last_check from urls where url = @url;",
             new { url });
         
         await _dbConnection.CloseAsync();
@@ -62,7 +62,7 @@ public class PostgresConnector : IDatabase
         try
         {
             var res = await _dbConnection.QueryAsync<UrlRow?>(
-                "select * from urls where url is @url;",
+                "select * from urls where url = @url;",
                 new { url },
                 transaction);
 
@@ -72,7 +72,7 @@ public class PostgresConnector : IDatabase
             {
                 _logger.LogTrace("Updating Url: {url}, last updated : {lastChecked}", url, lastChecked ?? urlRow.Value.LastChecked);
                 await _dbConnection.ExecuteAsync(
-                    "update urls set last_check = @date, raw_content = @content where url is @url",
+                    "update urls set last_check = @date, raw_content = @content where url = @url",
                     new { date = lastChecked ?? urlRow.Value.LastChecked, content = content ?? urlRow.Value.Content, url = urlRow },
                     transaction);
             }
@@ -82,7 +82,7 @@ public class PostgresConnector : IDatabase
 
                 await _dbConnection.ExecuteAsync(
                     "insert into urls (url, last_check, raw_content) values (@url, @date, @content);",
-                    new { date = lastChecked ?? DateTime.MinValue, content, url },
+                    new { date = lastChecked, content, url },
                     transaction);
             }
 

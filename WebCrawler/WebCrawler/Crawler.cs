@@ -76,13 +76,13 @@ public class Crawler : BackgroundService
             _logger.LogDebug("Crawling...");
             var urls = await _database.ListUrls();
 
-            await Parallel.ForEachAsync(urls, stoppingToken, async (url, cancellationToken) =>
-                //foreach (var url in urls)
+            //await Parallel.ForEachAsync(urls, stoppingToken, async (url, cancellationToken) =>
+            foreach (var url in urls)
             {
-                if (cancellationToken.IsCancellationRequested)
+                if (stoppingToken.IsCancellationRequested)
                 {
                     _logger.LogInformation("Cancellation requested, stopping crawl for: {url}", url);
-                    return; //break;
+                    break;
                 }
 
                 _logger.LogInformation("Crawling : {url}", url);
@@ -91,8 +91,7 @@ public class Crawler : BackgroundService
                 if (DateTime.Now - lastChecked < TimeSpan.FromMinutes(5))
                 {
                     _logger.LogDebug("Already checked {url} recently.", url);
-                    //continue;
-                    return;
+                    continue;
                 }
 
                 try
@@ -102,20 +101,20 @@ public class Crawler : BackgroundService
 
                     foreach (var childLink in info.ChildLinks)
                     {
-                        if (cancellationToken.IsCancellationRequested) break;
+                        if (stoppingToken.IsCancellationRequested) break;
                         await _database.UpsertUrl(childLink);
                     }
                 }
                 catch (OperationCanceledException)
                 {
                     _logger.LogInformation("Crawling operation was canceled for {url}.", url);
-                    return;  //break;
+                    break;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error crawling {url}", url);
                 }
-            });
+            }
 
             if (stoppingToken.IsCancellationRequested)
             {
