@@ -48,6 +48,8 @@ public class SqliteConector : IDatabase
         
         await _dbConnection.CloseAsync();
         
+        _logger.LogTrace("UrlLastChecked: {date}", date);
+        
         return date.FirstOrDefault() ?? DateTime.MinValue;
     }
 
@@ -56,12 +58,14 @@ public class SqliteConector : IDatabase
         await _dbConnection.OpenAsync();
         var transaction = await _dbConnection.BeginTransactionAsync();
 
+        _logger.LogTrace("UpsertUrl: {url}, last updated : {lastChecked}", url, lastChecked);
+        
         try
         {
-
             var res = await _dbConnection.QueryAsync<UrlRow?>(
                 "select * from urls where url is @url;",
-                new { url });
+                new { url },
+                transaction);
 
             var urlRow = res.FirstOrDefault();
 
@@ -69,13 +73,15 @@ public class SqliteConector : IDatabase
             {
                 await _dbConnection.ExecuteAsync(
                     "update urls set last_check = @date, raw_content = @content where url is @url",
-                    new { date = lastChecked, content, url = urlRow });
+                    new { date = lastChecked ?? DateTime.MinValue, content, url = urlRow },
+                    transaction);
             }
             else
             {
                 await _dbConnection.ExecuteAsync(
                     "insert into urls (url, last_check, raw_content) values (@url, @date, @content);",
-                    new { date = lastChecked, content, url });
+                    new { date = lastChecked ?? DateTime.MinValue, content, url },
+                    transaction);
             }
 
             await transaction.CommitAsync();
