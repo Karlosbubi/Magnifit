@@ -17,6 +17,16 @@ import SearchIcon from "@mui/icons-material/Search";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
 
+const getThemePreference = (): "light" | "dark" | null => {
+    return localStorage.getItem("magnifit_theme") as "light" | "dark" | null;
+};
+
+const setThemePreference = (mode: "light" | "dark") => {
+    localStorage.setItem("magnifit_theme", mode);
+};
+
+
+
 const mockData = [
     {
         id: 1,
@@ -51,17 +61,25 @@ const mockData = [
 ];
 
 export default function SearchPage() {
-    // Dark mode controlled only by toggle, start light mode
     const [darkMode, setDarkMode] = useState(false);
+
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
     const initialQuery = searchParams.get("q") || "";
     const [query, setQuery] = useState(initialQuery);
-
     const [results, setResults] = useState<typeof mockData>([]);
 
-    // Filter mock data when query changes
+    useEffect(() => {
+        const savedTheme = getThemePreference();
+        if (savedTheme === "dark") {
+            setDarkMode(true);
+        } else if (savedTheme === "light") {
+            setDarkMode(false);
+        }
+    }, []);
+
+    // Handle search filtering
     useEffect(() => {
         const q = query.trim().toLowerCase();
         if (q) {
@@ -76,12 +94,12 @@ export default function SearchPage() {
         }
     }, [query]);
 
-    // Navigation on search submit
     const handleSearch = () => {
         if (query.trim()) {
             navigate(`/search?q=${encodeURIComponent(query.trim())}`);
         }
     };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") handleSearch();
     };
@@ -123,7 +141,6 @@ export default function SearchPage() {
                     onClick={() => navigate("/")}
                 />
 
-
                 {/* Search Bar */}
                 <Paper
                     component="form"
@@ -133,7 +150,7 @@ export default function SearchPage() {
                     }}
                     sx={{
                         flexGrow: 1,
-                        maxWidth: 400, // narrower width
+                        maxWidth: 400,
                         display: "flex",
                         alignItems: "center",
                         borderRadius: "999px",
@@ -173,58 +190,62 @@ export default function SearchPage() {
                     />
                 </Paper>
 
-                {/* Dark/Light Toggle pushed to right */}
+                {/* Dark/Light Toggle */}
                 <Box sx={{ ml: 2 }}>
                     <IconButton
-                        onClick={() => setDarkMode(!darkMode)}
+                        onClick={() => {
+                            const newMode = !darkMode;
+                            setDarkMode(newMode);
+                            setThemePreference(newMode ? "dark" : "light");
+                        }}
                         color="inherit"
                         aria-label="Toggle dark/light mode"
                     >
                         {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
                     </IconButton>
-                </Box>
             </Box>
+        </Box>
 
-            {/* Results Container */}
-            <Container sx={{ pt: 4, pb: 12, maxWidth: "md" }}>
-                <Typography variant="h5" gutterBottom>
-                    Search Results for "{query}"
-                </Typography>
+            {/* Results */ }
+    <Container sx={{ pt: 4, pb: 12, maxWidth: "md" }}>
+        <Typography variant="h5" gutterBottom>
+            Search Results for "{query}"
+        </Typography>
 
-                {query.trim() === "" ? (
-                    <Typography variant="body1">Please enter a search query.</Typography>
-                ) : results.length === 0 ? (
-                    <Typography variant="body1">No results found.</Typography>
-                ) : (
-                    results.map((item) => (
-                        <Box key={item.id} sx={{ mb: 3 }}>
-                            <Link
-                                href={item.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                underline="hover"
-                                sx={{
-                                    fontSize: "1.25rem",
-                                    fontWeight: 600,
-                                    color: theme.palette.primary.main,
-                                }}
-                            >
-                                {item.title}
-                            </Link>
-                            <Typography
-                                sx={{
-                                    color: "text.secondary",
-                                    fontSize: "0.9rem",
-                                    userSelect: "text",
-                                }}
-                            >
-                                {item.url}
-                            </Typography>
-                            <Typography sx={{ mt: 0.5 }}>{item.description}</Typography>
-                        </Box>
-                    ))
-                )}
-            </Container>
-        </ThemeProvider>
+        {query.trim() === "" ? (
+            <Typography variant="body1">Please enter a search query.</Typography>
+        ) : results.length === 0 ? (
+            <Typography variant="body1">No results found.</Typography>
+        ) : (
+            results.map((item) => (
+                <Box key={item.id} sx={{ mb: 3 }}>
+                    <Link
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        underline="hover"
+                        sx={{
+                            fontSize: "1.25rem",
+                            fontWeight: 600,
+                            color: theme.palette.primary.main,
+                        }}
+                    >
+                        {item.title}
+                    </Link>
+                    <Typography
+                        sx={{
+                            color: "text.secondary",
+                            fontSize: "0.9rem",
+                            userSelect: "text",
+                        }}
+                    >
+                        {item.url}
+                    </Typography>
+                    <Typography sx={{ mt: 0.5 }}>{item.description}</Typography>
+                </Box>
+            ))
+        )}
+    </Container>
+        </ThemeProvider >
     );
 }

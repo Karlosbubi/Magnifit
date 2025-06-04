@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Container,
   TextField,
@@ -15,12 +15,29 @@ import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
 import { useNavigate } from "@remix-run/react";
 
+function getThemePreference(): "light" | "dark" | null {
+  return localStorage.getItem("magnifit_theme") as "light" | "dark" | null;
+}
+
+function setThemePreference(mode: "light" | "dark") {
+  localStorage.setItem("magnifit_theme", mode);
+}
+
 export default function Index() {
-  // No system preference, just start light mode (false)
   const [darkMode, setDarkMode] = useState(false);
   const [focused, setFocused] = useState(false);
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const savedTheme = getThemePreference();
+    if (savedTheme === "dark") {
+      setDarkMode(true);
+    } else if (savedTheme === "light") {
+      setDarkMode(false);
+    }
+  }, []);
+
 
   const theme = createTheme({
     palette: {
@@ -64,9 +81,18 @@ export default function Index() {
       >
         {/* Theme Toggle */}
         <Box sx={{ position: "absolute", top: 16, right: 16 }}>
-          <IconButton onClick={handleToggleTheme} color="inherit">
+          <IconButton
+            onClick={() => {
+              const newMode = !darkMode;
+              setDarkMode(newMode);
+              setThemePreference(newMode ? "dark" : "light");
+            }}
+            color="inherit"
+            aria-label="Toggle dark/light mode"
+          >
             {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
+
         </Box>
 
         {/* Main Content */}
@@ -157,7 +183,7 @@ export default function Index() {
           </Box>
         </Container>
 
-        {/* Imprint Link */}
+        {/* Footer */}
         <Box
           sx={{
             position: "absolute",
@@ -165,8 +191,38 @@ export default function Index() {
             width: "100%",
             display: "flex",
             justifyContent: "center",
+            alignItems: "center",
+            gap: 1,
           }}
         >
+          <Box
+            component="a"
+            href="/AddToDB"
+            sx={{
+              textDecoration: "none",
+              color: theme.palette.text.secondary,
+              fontSize: "0.9rem",
+              fontWeight: 500,
+              transition: "color 0.3s ease",
+              "&:hover": {
+                color: darkMode ? "#5fdde0" : "#005f6b",
+              },
+            }}
+          >
+            Add a URL
+          </Box>
+
+          <Box
+            sx={{
+              color: theme.palette.text.secondary,
+              fontSize: "0.9rem",
+              userSelect: "none",
+              mx: 1,
+            }}
+          >
+            |
+          </Box>
+
           <Box
             component="a"
             href="/imprint"
@@ -186,7 +242,7 @@ export default function Index() {
         </Box>
       </Box>
 
-      {/* Wave Animation Keyframes */}
+      {/* Keyframes */}
       <style>
         {`
           @keyframes waveflow {
