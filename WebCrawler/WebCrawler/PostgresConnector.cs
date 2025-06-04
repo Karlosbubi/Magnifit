@@ -58,22 +58,26 @@ public class PostgresConnector : IDatabase
     {
         await _dbConnection.OpenAsync();
         var transaction = await _dbConnection.BeginTransactionAsync();
-
         try
         {
-            var res = await _dbConnection.QueryAsync<UrlRow?>(
+            UrlRow? urlRow = await _dbConnection.QuerySingleOrDefaultAsync<UrlRow>(
                 "select * from urls where url = @url;",
                 new { url },
                 transaction);
 
-            var urlRow = res.FirstOrDefault();
-
             if (urlRow.HasValue)
             {
-                _logger.LogTrace("Updating Url: {url}, last updated : {lastChecked}", url, lastChecked ?? urlRow.Value.LastChecked);
+                _logger.LogTrace("Updating Url: {url}, last updated : {lastChecked}", url,
+                    lastChecked ?? urlRow.Value.LastChecked);
+                var newDate    = lastChecked ?? urlRow.Value.LastChecked;
+                var newContent = content ?? urlRow.Value.Content;
                 await _dbConnection.ExecuteAsync(
                     "update urls set last_check = @date, raw_content = @content where url = @url",
-                    new { date = lastChecked ?? urlRow.Value.LastChecked, content = content ?? urlRow.Value.Content, url = urlRow },
+                    new
+                    {
+                        date = newDate, content = newContent,
+                        url = url
+                    },
                     transaction);
             }
             else
@@ -93,8 +97,12 @@ public class PostgresConnector : IDatabase
         {
             await transaction.RollbackAsync();
         }
+        finally
+        {
+            await _dbConnection.CloseAsync();
+        }
 
-        await _dbConnection.CloseAsync();
+        
     }
 
     public async Task<IEnumerable<string>> ListUrls()

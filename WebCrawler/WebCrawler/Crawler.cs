@@ -20,6 +20,7 @@ public class Crawler : BackgroundService
 
     public async Task<CrawlResult> CrawlOnce(string url)
     {
+        url = url.Split('?')[0]; // Trim of Queries
         var baseUrl = $"https://{url.Replace("https://", "").Replace("http://", "").Split('/').FirstOrDefault()!}";
         var response = await _client.GetAsync(url);
         var contentHeaders = response.Content.Headers;
@@ -38,6 +39,8 @@ public class Crawler : BackgroundService
         var content = await response.Content.ReadAsStringAsync();
         IEnumerable<string> matches = AhrefRegex.Matches(content).Select(m => m.Groups[2].Value).Select(link =>
             {
+                link = link.Split('?')[0]; // Trim of Queries
+                
                 if (link.StartsWith("https://") || link.StartsWith("http://"))
                 {
                     return link;

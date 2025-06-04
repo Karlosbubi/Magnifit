@@ -14,7 +14,7 @@ public class Program
     static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
+            .MinimumLevel.Verbose()
             .WriteTo.Console()
             .CreateLogger();
 
