@@ -59,7 +59,16 @@ export default function AddToDB() {
 
 
     const handleSearch = async () => {
-        if (!query.trim()) return;
+        const trimmedQuery = query.trim();
+        if (!trimmedQuery) return;
+
+        // Validate URL
+        try {
+            new URL(trimmedQuery);
+        } catch {
+            setFeedback("Please enter a valid URL.");
+            return;
+        }
 
         setLoading(true);
         setFeedback(null);
@@ -70,7 +79,7 @@ export default function AddToDB() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ url: query.trim() }),
+                body: JSON.stringify({ url: trimmedQuery }),
             });
 
             if (!response.ok) throw new Error("Network response was not ok");
@@ -84,6 +93,7 @@ export default function AddToDB() {
             setLoading(false);
         }
     };
+
 
     const handleKeyDown = async (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
