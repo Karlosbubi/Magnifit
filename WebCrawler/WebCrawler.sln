@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebCrawler", "WebCrawler\WebCrawler.csproj", "{234684FC-AC46-4152-810C-08B73EDA7BF6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{234684FC-AC46-4152-810C-08B73EDA7BF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{234684FC-AC46-4152-810C-08B73EDA7BF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{234684FC-AC46-4152-810C-08B73EDA7BF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{234684FC-AC46-4152-810C-08B73EDA7BF6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
