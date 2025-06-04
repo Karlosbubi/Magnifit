@@ -6,13 +6,13 @@ using WebCrawler.DbModels;
 
 namespace WebCrawler;
 
-public class SqliteConector : IDatabase
+public class SqliteConnector : IDatabase
 {
     private readonly string _connectionString;
     private DbConnection _dbConnection;
-    private readonly ILogger<SqliteConector> _logger;
+    private readonly ILogger<SqliteConnector> _logger;
    
-    public SqliteConector(DbInfo dbInfo, ILogger<SqliteConector> logger)
+    public SqliteConnector(DbInfo dbInfo, ILogger<SqliteConnector> logger)
     {
         _connectionString = dbInfo.ConnectionString;
         _logger = logger;
@@ -58,8 +58,6 @@ public class SqliteConector : IDatabase
         await _dbConnection.OpenAsync();
         var transaction = await _dbConnection.BeginTransactionAsync();
 
-        _logger.LogTrace("UpsertUrl: {url}, last updated : {lastChecked}", url, lastChecked);
-        
         try
         {
             var res = await _dbConnection.QueryAsync<UrlRow?>(
@@ -69,15 +67,18 @@ public class SqliteConector : IDatabase
 
             var urlRow = res.FirstOrDefault();
 
-            if (urlRow != null)
+            if (urlRow.HasValue)
             {
+                _logger.LogTrace("Updating Url: {url}, last updated : {lastChecked}", url, lastChecked ?? urlRow.Value.LastChecked);
                 await _dbConnection.ExecuteAsync(
                     "update urls set last_check = @date, raw_content = @content where url is @url",
-                    new { date = lastChecked ?? DateTime.MinValue, content, url = urlRow },
+                    new { date = lastChecked ?? urlRow.Value.LastChecked, content = content ?? urlRow.Value.Content, url = urlRow },
                     transaction);
             }
             else
             {
+                _logger.LogTrace("Inserting Url: {url}, last updated : {lastChecked}", url, lastChecked);
+
                 await _dbConnection.ExecuteAsync(
                     "insert into urls (url, last_check, raw_content) values (@url, @date, @content);",
                     new { date = lastChecked ?? DateTime.MinValue, content, url },

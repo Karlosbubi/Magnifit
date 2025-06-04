@@ -14,15 +14,18 @@ public class Program
     static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .MinimumLevel.Verbose()
             .WriteTo.Console()
             .CreateLogger();
 
         var builder = Host.CreateApplicationBuilder(args);
         builder.Services
             .AddSerilog()
-            .AddSingleton<DbInfo>(_ => new DbInfo("Data Source=../../../crawler.db"))
-            .AddSingleton<IDatabase, SqliteConector>()
+            //.AddSingleton<DbInfo>(_ => new DbInfo("Data Source=../../../crawler.db"))
+            //.AddSingleton<IDatabase, SqliteConnector>()
+            .AddSingleton<DbInfo>(_ => new DbInfo(
+                "Host=127.0.0.1;Port=5433;Database=postgres;Username=root;Password=secret_password"))
+            .AddSingleton<IDatabase, PostgresConnector>()
             .AddHostedService<Crawler>();
         
         var host = builder.Build();
