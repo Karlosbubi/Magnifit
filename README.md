@@ -11,7 +11,7 @@
 ### Schrit 1 Jayden
 
 - [x] Basic Frontend ausfestzen
-- [ ] UI um manuell URLs der DB hinzu zu fügen
+- [x] UI um manuell URLs der DB hinzu zu fügen
 
 ### Schrit 2 Kurt
 
