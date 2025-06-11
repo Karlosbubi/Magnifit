@@ -25,39 +25,6 @@ const setThemePreference = (mode: "light" | "dark") => {
     localStorage.setItem("magnifit_theme", mode);
 };
 
-const mockData = [
-    {
-        id: 1,
-        title: "Healthy Living Tips",
-        description: "Stay fit with easy daily routines.",
-        url: "https://example.com/healthy-living",
-    },
-    {
-        id: 2,
-        title: "Magnifit Workout Plans",
-        description: "Custom workout plans for every level.",
-        url: "https://magnifit.com/workout-plans",
-    },
-    {
-        id: 3,
-        title: "Nutrition Guide",
-        description: "Learn how to eat well for energy and health.",
-        url: "https://example.com/nutrition-guide",
-    },
-    {
-        id: 4,
-        title: "Mental Fitness",
-        description: "Improve your mindset with daily exercises.",
-        url: "https://example.com/mental-fitness",
-    },
-    {
-        id: 5,
-        title: "Yoga for Beginners",
-        description: "Gentle yoga to get you started.",
-        url: "https://example.com/yoga-beginners",
-    },
-];
-
 export default function SearchPage() {
     const [darkMode, setDarkMode] = useState(false);
     const [searchParams] = useSearchParams();
@@ -66,7 +33,7 @@ export default function SearchPage() {
     const initialQuery = searchParams.get("q") || "";
     const [query, setQuery] = useState(initialQuery);
     const [searchTerm, setSearchTerm] = useState(initialQuery);
-    const [results, setResults] = useState<typeof mockData>([]);
+    const [results, setResults] = useState<any[]>([]);
 
     useEffect(() => {
         const savedTheme = getThemePreference();
@@ -78,17 +45,35 @@ export default function SearchPage() {
     }, []);
 
     useEffect(() => {
-        const q = searchTerm.trim().toLowerCase();
-        if (q) {
-            const filtered = mockData.filter(
-                (item) =>
-                    item.title.toLowerCase().includes(q) ||
-                    item.description.toLowerCase().includes(q)
-            );
-            setResults(filtered);
-        } else {
-            setResults([]);
-        }
+        const fetchResults = async () => {
+            const q = searchTerm.trim();
+            if (!q) {
+                setResults([]);
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:8000/search?q=${encodeURIComponent(q)}`);
+                if (!response.ok) {
+                    throw new Error("Search failed");
+                }
+
+                const data = await response.json();
+                const mappedResults = data.results.map((item: any, index: number) => ({
+                    id: index,
+                    title: item.url, // Replace with real title if available
+                    description: `Rating: ${item.rating}`,
+                    url: item.url,
+                }));
+
+                setResults(mappedResults);
+            } catch (error) {
+                console.error("Search error:", error);
+                setResults([]);
+            }
+        };
+
+        fetchResults();
     }, [searchTerm]);
 
     const handleSearch = () => {
@@ -119,7 +104,6 @@ export default function SearchPage() {
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            {/* Header */}
             <Box
                 sx={{
                     px: 2,
@@ -134,7 +118,6 @@ export default function SearchPage() {
                     zIndex: 1000,
                 }}
             >
-                {/* Logo */}
                 <Box
                     component="img"
                     src={logoSrc}
@@ -143,7 +126,6 @@ export default function SearchPage() {
                     onClick={() => navigate("/")}
                 />
 
-                {/* Search Bar */}
                 <Paper
                     component="form"
                     onSubmit={(e) => {
@@ -192,7 +174,6 @@ export default function SearchPage() {
                     />
                 </Paper>
 
-                {/* Dark/Light Toggle */}
                 <Box sx={{ ml: 2 }}>
                     <IconButton
                         onClick={() => {
@@ -208,7 +189,6 @@ export default function SearchPage() {
                 </Box>
             </Box>
 
-            {/* Results */}
             <Container sx={{ pt: 4, pb: 12, maxWidth: "md" }}>
                 <Typography variant="h5" gutterBottom>
                     Search Results for "{searchTerm}"
