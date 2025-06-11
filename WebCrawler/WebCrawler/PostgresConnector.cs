@@ -61,48 +61,9 @@ public class PostgresConnector : IDatabase, IDisposable, IAsyncDisposable
 
     public async Task UpsertUrl(string url, DateTime? lastChecked = null, string? content = null)
     {
-        var transaction = await _dbConnection.BeginTransactionAsync();
-        try
-        {
-            UrlRow? urlRow = await _dbConnection.QuerySingleOrDefaultAsync<UrlRow>(
-                "select * from urls where url = @url;",
-                new { url },
-                transaction);
-
-            if (urlRow.HasValue)
-            {
-                var newDate = lastChecked ?? urlRow.Value.LastChecked;
-                var newContent = content ?? urlRow.Value.Content;
-                await _dbConnection.ExecuteAsync(
-                    "update urls set last_check = @date, raw_content = @content where url = @url",
-                    new
-                    {
-                        date = newDate,
-                        content = newContent,
-                        url = url
-                    },
-                    transaction);
-                _logger.LogTrace("Updating Url: {url}, last updated : {lastChecked}", url,
-                    lastChecked ?? urlRow.Value.LastChecked);
-            }
-            else
-            {
-                _logger.LogTrace("Inserting Url: {url}, last updated : {lastChecked}", url, lastChecked);
-
-                await _dbConnection.ExecuteAsync(
-                    "insert into urls (url, last_check, raw_content) values (@url, @date, @content);",
-                    new { date = lastChecked, content, url },
-                    transaction);
-            }
-
-            await transaction.CommitAsync();
-
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Transcation error");
-            await transaction.RollbackAsync();
-        }
+        await _dbConnection.ExecuteAsync(
+            "insert into urls (url, last_check, raw_content) values (@url, @date, @content) on conflict (url) do update set last_check = excluded.last_check, raw_content = excluded.raw_content;",
+            new { date = lastChecked, content, url });
     }
 
     public async Task<int> AddToken(string token)
@@ -142,28 +103,12 @@ public class PostgresConnector : IDatabase, IDisposable, IAsyncDisposable
             _logger.LogTrace("Token {token} has id {id}", token, token_id);
             await Task.Delay(10);
             
-            TokenRow? tokenRow = await _dbConnection.QuerySingleOrDefaultAsync<TokenRow?>(
-                "select * from usage where url = @url_id and token = @token_id;",
-                new { url_id, token_id },
-                transaction);
-
-            if (tokenRow.HasValue)
-            {
-                await _dbConnection.ExecuteAsync(
-                    "update usage set count = @count where url = @url_id and token = @token_id;",
-                    new { url_id, token_id, count },
-                    transaction
-                );
-            }
-            else
-            {
-                await _dbConnection.ExecuteAsync(
-                    "insert into usage (url, token, count) values (@url_id, @token_id, @count);",
-                    new { url_id, token_id, count },
-                    transaction
-                );   
-            }
-            
+            await _dbConnection.ExecuteAsync(
+                "insert into usage (url, token, count) values (@url_id, @token_id, @count) on conflict (url, token) do update set count = excluded.count;",
+                new { url_id, token_id, count },
+                transaction
+            );   
+                
             await transaction.CommitAsync();
         }
         catch(Exception ex)
