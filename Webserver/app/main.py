@@ -3,6 +3,7 @@ from fastapi import FastAPI, Query, HTTPException
 from databases import Database
 from dotenv import load_dotenv
 import tiktoken
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -12,6 +13,18 @@ if not DATABASE_URL:
 
 database = Database(DATABASE_URL)
 app = FastAPI(title="Magnifit Search API")
+
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Replace with frontend domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 
 # Load tokenizer (OpenAI GPT-4 tokenizer base)
 tokenizer = tiktoken.get_encoding("cl100k_base")
