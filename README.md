@@ -19,5 +19,5 @@
 
 ### Schrit 2 Jayden
 
-- [x] UI Suchmaske
+- [x] UI Suchmaske  
 - [ ] Suchergebnisse aus DB hohlen und ggf. ranken
