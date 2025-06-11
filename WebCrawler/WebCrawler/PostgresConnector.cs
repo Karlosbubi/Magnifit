@@ -1,62 +1,66 @@
 using System.Data.Common;
 using Dapper;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using WebCrawler.DbModels;
 
 namespace WebCrawler;
 
-public class PostgresConnector : IDatabase
+public class PostgresConnector : IDatabase, IDisposable, IAsyncDisposable
 {
     private readonly string _connectionString;
     private DbConnection _dbConnection;
     private readonly ILogger<PostgresConnector> _logger;
-   
+
     public PostgresConnector(DbInfo dbInfo, ILogger<PostgresConnector> logger)
     {
         _connectionString = dbInfo.ConnectionString;
         _logger = logger;
         _dbConnection = new NpgsqlConnection();
         _dbConnection.ConnectionString = _connectionString;
+        _dbConnection.OpenAsync().Wait();
     }
 
     public void Initalize()
     {
-        _dbConnection.Open();
-
         string query = """
-                       create table if not exists urls(
-                            id serial primary key,
-                            url text not null unique,
-                            last_check timestamp,
-                            raw_content text
-                           );
-                       """;
-        
+            create table if not exists urls(
+                 id serial primary key,
+                 url text not null unique,
+                 title text,
+                 last_check timestamp,
+                 raw_content text
+            );
+            create table if not exists tokens(
+                 id serial primary key,
+                 token text not null unique
+            );
+            create table if not exists usage(
+                url int not null,
+                token int not null,
+                count int not null,
+                foreign key (url) references urls(id),
+                foreign key (token) references tokens(id),
+                primary key (url, token)
+            );
+            """;
+
         _dbConnection.Execute(query);
-        
-        _dbConnection.Close();
     }
 
     public async Task<DateTime> UrlLastChecked(string url)
     {
-        await _dbConnection.OpenAsync();
-
         var date = await _dbConnection.QueryAsync<DateTime?>(
             "SELECT last_check from urls where url = @url;",
             new { url });
-        
-        await _dbConnection.CloseAsync();
-        
+
         _logger.LogTrace("UrlLastChecked: {date}", date);
-        
+
         return date.FirstOrDefault() ?? DateTime.MinValue;
     }
 
     public async Task UpsertUrl(string url, DateTime? lastChecked = null, string? content = null)
     {
-        await _dbConnection.OpenAsync();
         var transaction = await _dbConnection.BeginTransactionAsync();
         try
         {
@@ -67,18 +71,19 @@ public class PostgresConnector : IDatabase
 
             if (urlRow.HasValue)
             {
-                _logger.LogTrace("Updating Url: {url}, last updated : {lastChecked}", url,
-                    lastChecked ?? urlRow.Value.LastChecked);
-                var newDate    = lastChecked ?? urlRow.Value.LastChecked;
+                var newDate = lastChecked ?? urlRow.Value.LastChecked;
                 var newContent = content ?? urlRow.Value.Content;
                 await _dbConnection.ExecuteAsync(
                     "update urls set last_check = @date, raw_content = @content where url = @url",
                     new
                     {
-                        date = newDate, content = newContent,
+                        date = newDate,
+                        content = newContent,
                         url = url
                     },
                     transaction);
+                _logger.LogTrace("Updating Url: {url}, last updated : {lastChecked}", url,
+                    lastChecked ?? urlRow.Value.LastChecked);
             }
             else
             {
@@ -95,26 +100,99 @@ public class PostgresConnector : IDatabase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Transcation error");
             await transaction.RollbackAsync();
         }
-        finally
-        {
-            await _dbConnection.CloseAsync();
-        }
+    }
 
-        
+    public async Task<int> AddToken(string token)
+    {
+        _logger.LogTrace("Adding token: {token}", token);
+        _dbConnection.Execute("insert into tokens (token) values (@token);", new {token});
+        int token_id = await _dbConnection.QuerySingleAsync<int>(
+            "select id from tokens where token = @token;",
+            new { token });
+        return token_id;
+    }
+
+    public async Task<IEnumerable<UrlRow>> Search(IEnumerable<string> tokens)
+    {
+        const int limit = 10;
+        return await _dbConnection.QueryAsync<UrlRow>(
+            "select urls.url, sum(u.count) as rating from urls join usage as u on urls.id = u.url join tokens as t on u.token = t.id where t.token in @tokens order by rating desc limit @limit",
+            new {limit = limit, tokens = tokens}
+            );
+    }
+    
+    public async Task UpsertToken(string url, string token, int count)
+    {
+        var transaction = await _dbConnection.BeginTransactionAsync();
+        try
+        {
+            int url_id = await _dbConnection.QuerySingleAsync<int>(
+                "select id from urls where url = @url;",
+                new { url },
+                transaction);
+            int? token_id = await _dbConnection.QuerySingleOrDefaultAsync<int?>(
+                "select id from tokens where token = @token;",
+                new { token },
+                transaction);
+            token_id ??= await AddToken(token);
+            
+            _logger.LogTrace("Token {token} has id {id}", token, token_id);
+            await Task.Delay(10);
+            
+            TokenRow? tokenRow = await _dbConnection.QuerySingleOrDefaultAsync<TokenRow?>(
+                "select * from usage where url = @url_id and token = @token_id;",
+                new { url_id, token_id },
+                transaction);
+
+            if (tokenRow.HasValue)
+            {
+                await _dbConnection.ExecuteAsync(
+                    "update usage set count = @count where url = @url_id and token = @token_id;",
+                    new { url_id, token_id, count },
+                    transaction
+                );
+            }
+            else
+            {
+                await _dbConnection.ExecuteAsync(
+                    "insert into usage (url, token, count) values (@url_id, @token_id, @count);",
+                    new { url_id, token_id, count },
+                    transaction
+                );   
+            }
+            
+            await transaction.CommitAsync();
+        }
+        catch(Exception ex)
+        {
+            _logger.LogError(ex, "Transcation error");
+            await transaction.RollbackAsync();
+        }
     }
 
     public async Task<IEnumerable<string>> ListUrls()
     {
-        await _dbConnection.OpenAsync();
         var result = await _dbConnection.QueryAsync<string>(
             "Select url from urls;");
-        await _dbConnection.CloseAsync();
 
         var listUrls = result as string[] ?? result.ToArray();
-        var count =  listUrls.Count();
+        var count = listUrls.Count();
         _logger.LogInformation("Found {count} urls.", count);
         return listUrls;
+    }
+
+    public void Dispose()
+    {
+        _dbConnection.Close();
+        _dbConnection.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _dbConnection.CloseAsync();
+        await _dbConnection.DisposeAsync();
     }
 }

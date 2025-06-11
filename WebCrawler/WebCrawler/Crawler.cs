@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.ML.Tokenizers;
 
 namespace WebCrawler;
 
@@ -8,6 +9,7 @@ public class Crawler : BackgroundService
 {
     private readonly HttpClient _client;
     private static readonly Regex AhrefRegex = new("(href=[\"'])(.*?)([\"'])");
+    private static readonly Regex CleanHtmlRegex = new("<[^>]+?>");
     private readonly IDatabase _database;
     private readonly ILogger<Crawler> _logger;
 
@@ -37,7 +39,9 @@ public class Crawler : BackgroundService
         }
         
         var content = await response.Content.ReadAsStringAsync();
-        IEnumerable<string> matches = AhrefRegex.Matches(content).Select(m => m.Groups[2].Value).Select(link =>
+        IEnumerable<string> matches = AhrefRegex.Matches(content)
+            .Select(m => m.Groups[2].Value)
+            .Select(link =>
             {
                 link = link.Split('?')[0]; // Trim of Queries
                 
@@ -61,7 +65,7 @@ public class Crawler : BackgroundService
             Url = url,
             LastChecked = DateTime.Now,
             ChildLinks = matches,
-            Content = content,
+            Content = CleanHtmlRegex.Replace(content, string.Empty),
         };
     }
     
@@ -78,8 +82,7 @@ public class Crawler : BackgroundService
         {
             _logger.LogDebug("Crawling...");
             var urls = await _database.ListUrls();
-
-            //await Parallel.ForEachAsync(urls, stoppingToken, async (url, cancellationToken) =>
+            
             foreach (var url in urls)
             {
                 if (stoppingToken.IsCancellationRequested)
@@ -101,6 +104,8 @@ public class Crawler : BackgroundService
                 {
                     var info = await CrawlOnce(url);
                     await _database.UpsertUrl(url, info.LastChecked, info.Content);
+                    
+                    await ProcessContent(url, info.Content);
 
                     foreach (var childLink in info.ChildLinks)
                     {
@@ -123,17 +128,28 @@ public class Crawler : BackgroundService
             {
                 break;
             }
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation("Delay was canceled, stopping service.");
-                break;
-            }
+
         }
 
         _logger.LogInformation("Crawler Service has stopped.");
+    }
+
+    private async Task ProcessContent(string url, string content)
+    {
+        _logger.LogInformation("Processing {url}...", url);
+        const string modelName = "gpt-4o";
+        Tokenizer tokenizer = TiktokenTokenizer.CreateForModel(modelName);
+        
+        IReadOnlyList<(int t, int c)> tokens = tokenizer
+            .EncodeToIds(content)
+            .GroupBy(item => item)
+            .Select(group => (group.Key, group.Count()))
+            .ToList();
+        foreach (var token in tokens)
+        {
+            var t = tokenizer.Decode([token.t]);
+            _logger.LogTrace("Word Token : {t}", t);
+            await _database.UpsertToken(url, t, token.c);
+        }
     }
 }
