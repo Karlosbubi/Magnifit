@@ -96,6 +96,11 @@ public class SqliteConnector : IDatabase
         await _dbConnection.CloseAsync();
     }
 
+    public Task UpsertToken(string url, string token, int count)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<IEnumerable<string>> ListUrls()
     {
         await _dbConnection.OpenAsync();

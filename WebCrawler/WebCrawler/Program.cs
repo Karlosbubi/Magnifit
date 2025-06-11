@@ -14,7 +14,7 @@ public class Program
     static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Verbose()
+            .MinimumLevel.Information()
             .WriteTo.Console()
             .CreateLogger();
 
@@ -25,7 +25,7 @@ public class Program
             //.AddSingleton<IDatabase, SqliteConnector>()
             .AddSingleton<DbInfo>(_ => new DbInfo(
                 "Host=127.0.0.1;Port=5433;Database=postgres;Username=root;Password=secret_password"))
-            .AddSingleton<IDatabase, PostgresConnector>()
+            .AddTransient<IDatabase, PostgresConnector>()
             .AddHostedService<Crawler>();
         
         var host = builder.Build();
