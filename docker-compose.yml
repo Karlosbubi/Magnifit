@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: secret_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      shared_network:
+  
+  crawler:
+    build:
+      context: ./WebCrawler
+      dockerfile: Dockerfile
+    networks:
+      shared_network:
+    depends_on:
+      - db
+
+
+
+volumes:
+  db_data:
+
+networks:
+  shared_network:
+    driver: bridge
