@@ -21,9 +21,9 @@ services:
     depends_on:
       - db
 
-  frontend:
+  crawler_interface:
     build:
-      context: ./frontend
+      context: ./crawler_interface
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
@@ -31,6 +31,8 @@ services:
       shared_network:
     depends_on:
       - db
+    environment:
+      - DB_CONNECTION=postgresql://root:secret_password@db:5432/postgres
 
 
 

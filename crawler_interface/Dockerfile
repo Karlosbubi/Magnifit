@@ -1,4 +1,3 @@
-# ---- Build Stage ----
 FROM node:20-alpine AS builder
 
 # Copy package files and install dependencies
