@@ -23,9 +23,9 @@ public class Program
             .AddSerilog()
             //.AddSingleton<DbInfo>(_ => new DbInfo("Data Source=../../../crawler.db"))
             //.AddSingleton<IDatabase, SqliteConnector>()
-            .AddSingleton<DbInfo>(_ => new DbInfo(
-                "Host=127.0.0.1;Port=5433;Database=postgres;Username=root;Password=secret_password"))
-            .AddTransient<IDatabase, PostgresConnector>()
+            //.AddSingleton<DbInfo>(_ => new DbInfo("Host=127.0.0.1;Port=5433;Database=postgres;Username=root;Password=secret_password"))
+            .AddSingleton<DbInfo>(_ => new DbInfo("Host=db;Port=5432;Database=postgres;Username=root;Password=secret_password"))
+            .AddSingleton<IDatabase, PostgresConnector>()
             .AddHostedService<Crawler>();
         
         var host = builder.Build();
