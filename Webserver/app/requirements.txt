@@ -1,6 +1,0 @@
-fastapi
-databases
-python-dotenv
-tiktoken
-uvicorn
-sqlalchemy[asyncio]
