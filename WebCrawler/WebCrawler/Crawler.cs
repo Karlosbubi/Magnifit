@@ -82,6 +82,8 @@ public class Crawler : BackgroundService
         {
             _logger.LogDebug("Crawling...");
             var urls = await _database.ListUrls();
+
+            await Task.Delay(1, stoppingToken);
             
             foreach (var url in urls)
             {

@@ -1,5 +1,28 @@
 # Abgabe_Suchmachine
 
+Run
+
+```bash
+docker compose up
+```
+
+Rebuild and Run
+
+```bash
+docker compose up --build
+```
+
+Run Dev
+
+```bash
+docker compose -f db-docker-compose.yml up
+cd WebCrawler/WebCrawler
+dotnet run
+cd ../../crawler_interface
+pnpm dev
+```
+
+
 ## TODO Liste
 
 ### Schrit 1 Kurt
@@ -15,9 +38,15 @@
 
 ### Schrit 2 Kurt
 
-- [ ] Website Content beim tokenizen
+- [x] Website Content beim tokenizen
 
 ### Schrit 2 Jayden
 
 - [x] UI Suchmaske  
-- [ ] Suchergebnisse aus DB hohlen und ggf. ranken
+- [x] Suchergebnisse aus DB hohlen und ggf. ranken
+
+### Schrit 3 Kurt
+
+- [x] Fullstack Frontend
+- [x] Dockerize Everything
+- [x] Switch Tokenizing
