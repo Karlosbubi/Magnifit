@@ -137,19 +137,41 @@ public class Crawler : BackgroundService
     private async Task ProcessContent(string url, string content)
     {
         _logger.LogInformation("Processing {url}...", url);
+        /*
         const string modelName = "gpt-4o";
         Tokenizer tokenizer = TiktokenTokenizer.CreateForModel(modelName);
         
         IReadOnlyList<(int t, int c)> tokens = tokenizer
             .EncodeToIds(content)
             .GroupBy(item => item)
+            .Select(group => (tokenizer.Decode([group.Key]), group.Count()))
+            .ToList();
+        */
+        IReadOnlyList<(string t, int c)> tokens = content.Split([' ', '-', '\n'])
+            .Select(s => s.Replace(".", "")
+                                .Replace(",", "")
+                                .Replace("!", "")
+                                .Replace("?", "")
+                                .Replace("(", "")
+                                .Replace(")", "")
+                                .Replace(":", "")
+                                .Replace(";", "")
+                                .Replace("'", "")
+                                .Replace("\"", "")
+                                .Replace("{", "")
+                                .Replace("}", "")
+                                .Replace("+", "")
+                                .Replace("@", "")
+            )
+            .Select(s => s.ToLowerInvariant())
+            .Select(s => s.Trim())
+            .GroupBy(item => item)
             .Select(group => (group.Key, group.Count()))
             .ToList();
         foreach (var token in tokens)
         {
-            var t = tokenizer.Decode([token.t]);
-            _logger.LogTrace("Word Token : {t}", t);
-            await _database.UpsertToken(url, t, token.c);
+            _logger.LogTrace("Word Token : {t}", token.t);
+            await _database.UpsertToken(url, token.t, token.c);
         }
     }
 }

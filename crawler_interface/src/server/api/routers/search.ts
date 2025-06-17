@@ -72,15 +72,21 @@ export const searchRouter = createTRPCRouter({
 		.input(z.string())
 		.query(async ({ input }) => {
 			// Tokenize the search query using tiktoken with gpt-4o model
-			const tokenizer = await getTokenizer();
+			//const tokenizer = await getTokenizer();
 			
 			// Tokenize the input and get unique tokens
-			const tokenIds = tokenizer.encode(input);
-			const uniqueTokenIds = [...new Set(tokenIds)];
+			//const tokenIds = tokenizer.encode(input);
+			//const uniqueTokenIds = [...new Set(tokenIds)];
 			
 			// Decode tokens back to strings for database search
-			const tokens = uniqueTokenIds.map(tokenId => String.fromCharCode(...tokenizer.decode(new Uint32Array([tokenId]))));
+			//const tokens = uniqueTokenIds.map(tokenId => String.fromCharCode(...tokenizer.decode(new Uint32Array([tokenId]))));
 			
+			const tokens = input.split(/[\s\-\n]/)
+    							.map((s) => s.replace(/[.,\-!?()\":;']/g, ''))
+								.map((s) => s.trim())
+								.map((s) => s.toLowerCase())
+								.filter((s) => s.length > 0);
+
 			console.log(`Searching for tokens: ${tokens.join(', ')}`);
 			
 			// Create a connection pool
