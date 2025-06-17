@@ -79,7 +79,7 @@ export const searchRouter = createTRPCRouter({
 			const uniqueTokenIds = [...new Set(tokenIds)];
 			
 			// Decode tokens back to strings for database search
-			const tokens = uniqueTokenIds.map(tokenId => tokenizer.decode(new Uint32Array([tokenId])));
+			const tokens = uniqueTokenIds.map(tokenId => String.fromCharCode(...tokenizer.decode(new Uint32Array([tokenId]))));
 			
 			console.log(`Searching for tokens: ${tokens.join(', ')}`);
 			

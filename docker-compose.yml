@@ -33,6 +33,7 @@ services:
       - db
     environment:
       - DB_CONNECTION=postgresql://root:secret_password@db:5432/postgres
+      - NODE_ENV=production
 
 
 
