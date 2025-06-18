@@ -27,24 +27,25 @@ public class Crawler : BackgroundService
         var response = await _client.GetAsync(url);
         var contentHeaders = response.Content.Headers;
         var contentType = contentHeaders.FirstOrDefault(h => h.Key == "Content-Type").Value.FirstOrDefault();
-        
-        if (contentType == null || !contentType.Contains("text/html")) {
+
+        if (contentType == null || !contentType.Contains("text/html"))
+        {
             _logger.LogError("Crawler found content type : \"{contentType}\". Won't check again soon.", contentType);
             return new CrawlResult
             {
                 Url = url,
-                LastChecked = DateTime.Now + TimeSpan.FromDays(30),
+                LastChecked = DateTime.Now + TimeSpan.FromDays(365),
                 ChildLinks = [baseUrl],
             };
         }
-        
+
         var content = await response.Content.ReadAsStringAsync();
         IEnumerable<string> matches = AhrefRegex.Matches(content)
             .Select(m => m.Groups[2].Value)
             .Select(link =>
             {
                 link = link.Split('?')[0]; // Trim of Queries
-                
+
                 if (link.StartsWith("https://") || link.StartsWith("http://"))
                 {
                     return link;
@@ -54,12 +55,12 @@ public class Crawler : BackgroundService
                 {
                     return $"{baseUrl}{link}";
                 }
-                
+
                 return null;
             }
         ).Where(m => m != null)!;
         matches = matches.Append(baseUrl);
-        
+
         return new CrawlResult
         {
             Url = url,
@@ -68,13 +69,13 @@ public class Crawler : BackgroundService
             Content = CleanHtmlRegex.Replace(content, string.Empty),
         };
     }
-    
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Crawler Service is starting.");
         _database.Initalize();
         _logger.LogInformation("Database initialized");
-        
+
         stoppingToken.Register(() =>
             _logger.LogInformation("Crawler Service is stopping."));
 
@@ -84,7 +85,7 @@ public class Crawler : BackgroundService
             var urls = await _database.ListUrls();
 
             await Task.Delay(1, stoppingToken);
-            
+
             foreach (var url in urls)
             {
                 if (stoppingToken.IsCancellationRequested)
@@ -96,7 +97,7 @@ public class Crawler : BackgroundService
                 _logger.LogInformation("Crawling : {url}", url);
                 var lastChecked = await _database.UrlLastChecked(url);
 
-                if (DateTime.Now - lastChecked < TimeSpan.FromMinutes(5))
+                if (DateTime.Now - lastChecked < TimeSpan.FromDays(5))
                 {
                     _logger.LogDebug("Already checked {url} recently.", url);
                     continue;
@@ -106,7 +107,7 @@ public class Crawler : BackgroundService
                 {
                     var info = await CrawlOnce(url);
                     await _database.UpsertUrl(url, info.LastChecked, info.Content);
-                    
+
                     await ProcessContent(url, info.Content);
 
                     foreach (var childLink in info.ChildLinks)
