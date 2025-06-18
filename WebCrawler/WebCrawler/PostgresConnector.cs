@@ -59,11 +59,15 @@ public class PostgresConnector : IDatabase, IDisposable, IAsyncDisposable
         return date.FirstOrDefault() ?? DateTime.MinValue;
     }
 
-    public async Task UpsertUrl(string url, DateTime? lastChecked = null, string? content = null)
+    public async Task UpsertUrl(string url, DateTime? lastChecked = null, string? content = null, string? title = null)
     {
+        _logger.LogTrace("Upserting URL: {url}, LastChecked: {lastChecked}, Content Length: {contentLength}, Title: {title}",
+            url, lastChecked, content?.Length ?? 0, title);
+
+        var lastCheckedValue = lastChecked ?? DateTime.Now;
         await _dbConnection.ExecuteAsync(
-            "insert into urls (url, last_check, raw_content) values (@url, @date, @content) on conflict (url) do update set last_check = excluded.last_check, raw_content = excluded.raw_content;",
-            new { date = lastChecked, content, url });
+            "insert into urls (url, last_check, raw_content, title) values (@url, @date, @content, @title) on conflict (url) do update set last_check = excluded.last_check, raw_content = excluded.raw_content, title = excluded.title;",
+            new { date = lastCheckedValue, content, title, url });
     }
 
     public async Task<int> AddToken(string token)

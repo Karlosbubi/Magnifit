@@ -6,4 +6,5 @@ public record CrawlResult
     public required DateTime LastChecked;
     public required IEnumerable<string> ChildLinks;
     public string Content = "";
+    public string? Title = null;
 }

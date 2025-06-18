@@ -9,6 +9,7 @@ public class Crawler : BackgroundService
 {
     private readonly HttpClient _client;
     private static readonly Regex AhrefRegex = new("(href=[\"'])(.*?)([\"'])");
+    private static readonly Regex TitleRegex = new(@"<title>\s*(.*?)\s*</title>");
     private static readonly Regex CleanHtmlRegex = new("<[^>]+?>");
     private readonly IDatabase _database;
     private readonly ILogger<Crawler> _logger;
@@ -30,7 +31,7 @@ public class Crawler : BackgroundService
 
         if (contentType == null || !contentType.Contains("text/html"))
         {
-            _logger.LogError("Crawler found content type : \"{contentType}\". Won't check again soon.", contentType);
+            _logger.LogError("Crawler found unwanted content type : \"{contentType}\". Won't check again soon.", contentType);
             return new CrawlResult
             {
                 Url = url,
@@ -60,10 +61,13 @@ public class Crawler : BackgroundService
             }
         ).Where(m => m != null)!;
         matches = matches.Append(baseUrl);
-
+        
+        var title = TitleRegex.Match(content).Success ? TitleRegex.Match(content).Groups[1].Value : null;
+        
         return new CrawlResult
         {
             Url = url,
+            Title = title,
             LastChecked = DateTime.Now,
             ChildLinks = matches,
             Content = CleanHtmlRegex.Replace(content, string.Empty),
@@ -106,7 +110,7 @@ public class Crawler : BackgroundService
                 try
                 {
                     var info = await CrawlOnce(url);
-                    await _database.UpsertUrl(url, info.LastChecked, info.Content);
+                    await _database.UpsertUrl(url, info.LastChecked, info.Content, info.Title);
 
                     await ProcessContent(url, info.Content);
 
@@ -150,24 +154,20 @@ public class Crawler : BackgroundService
             .Select(group => (tokenizer.Decode([group.Key]), group.Count()))
             .ToList();
         */
-        IReadOnlyList<(string t, int c)> tokens = content.Split([' ', '-', '\n'])
-            .Select(s => s.Replace(".", "")
-                                .Replace(",", "")
-                                .Replace("!", "")
-                                .Replace("?", "")
-                                .Replace("(", "")
-                                .Replace(")", "")
-                                .Replace(":", "")
-                                .Replace(";", "")
-                                .Replace("'", "")
-                                .Replace("\"", "")
-                                .Replace("{", "")
-                                .Replace("}", "")
-                                .Replace("+", "")
-                                .Replace("@", "")
+        IReadOnlyList<(string t, int c)> tokens = content.Split(
+            [' ', '-', '\n', '.', '[', ']', ',', '\\', '/', '@', '_', '=', '>', '<', '"', '*', '(', ')', ';'])
+            .Select(s => s.Replace("!", "")
+                        .Replace("?", "")
+                        .Replace(":", "")
+                        .Replace(";", "")
+                        .Replace("'", "")
+                        .Replace("{", "")
+                        .Replace("}", "")
+                        .Replace("+", "")
             )
             .Select(s => s.ToLowerInvariant())
             .Select(s => s.Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
             .GroupBy(item => item)
             .Select(group => (group.Key, group.Count()))
             .ToList();

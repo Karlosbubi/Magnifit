@@ -53,7 +53,7 @@ public class SqliteConnector : IDatabase
         return date.FirstOrDefault() ?? DateTime.MinValue;
     }
 
-    public async Task UpsertUrl(string url, DateTime? lastChecked = null, string? content = null)
+    public async Task UpsertUrl(string url, DateTime? lastChecked = null, string? content = null, string? title = null)
     {
         await _dbConnection.OpenAsync();
         var transaction = await _dbConnection.BeginTransactionAsync();
